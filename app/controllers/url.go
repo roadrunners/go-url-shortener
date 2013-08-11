@@ -10,6 +10,10 @@ type URL struct {
 	*revel.Controller
 }
 
+type CreateResponse struct {
+	Slug string
+}
+
 func (c URL) Create(url string) revel.Result {
 	slug, err := shortener.Put(url)
 	if err != nil {
@@ -17,7 +21,11 @@ func (c URL) Create(url string) revel.Result {
 	}
 
 	c.Response.Status = http.StatusCreated
-	return c.RenderText(slug)
+	return c.RenderJson(CreateResponse{slug})
+}
+
+type RetrieveResponse struct {
+	URL string
 }
 
 func (c URL) Retrieve(slug string) revel.Result {
@@ -30,5 +38,5 @@ func (c URL) Retrieve(slug string) revel.Result {
 		return c.RenderError(err)
 	}
 
-	return c.RenderText(url)
+	return c.RenderJson(RetrieveResponse{url})
 }
