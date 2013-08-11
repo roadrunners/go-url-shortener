@@ -12,7 +12,7 @@ var (
 
 type urlStore struct {
 	cacheGroup *gc.Group
-	cache      chan string
+	keys       chan string
 }
 
 const (
@@ -24,7 +24,7 @@ const (
 func newStore() *urlStore {
 	s := new(urlStore)
 	s.cacheGroup = gc.NewGroup(cacheName, cacheSize, gc.GetterFunc(s.getter))
-	s.cache = make(chan string, saveQueueLength)
+	s.keys = make(chan string, saveQueueLength)
 	return s
 }
 
@@ -76,7 +76,7 @@ func (s *urlStore) Put(url string) (string, error) {
 		}
 	}
 
-	s.cache <- key
+	s.keys <- key
 
 	revel.INFO.Printf("Created short url %s for %s", key, url)
 
@@ -104,9 +104,9 @@ func (s *urlStore) set(key, url string) error {
 	return nil
 }
 
-func (s *urlStore) cacher() {
+func (s *urlStore) cacheKeys() {
 	for {
-		key := <-s.cache
+		key := <-s.keys
 		revel.INFO.Println("Hottening cache for", key)
 		s.lookupKey(key)
 	}
