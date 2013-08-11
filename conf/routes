@@ -8,4 +8,4 @@ GET     /favicon.ico                            404
 GET     /public/*filepath                       Static.Serve("public")
 
 POST    /                                       URL.Create
-GET     /:slug                                  URL.Redirect
+GET     /:slug                                  URL.Retrieve

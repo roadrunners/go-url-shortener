@@ -20,7 +20,7 @@ func (c URL) Create(url string) revel.Result {
 	return c.RenderText(slug)
 }
 
-func (c URL) Redirect(slug string) revel.Result {
+func (c URL) Retrieve(slug string) revel.Result {
 	url, err := shortener.Get(slug)
 	if err != nil {
 		if _, ok := err.(*shortener.CannotFindShortUrlError); ok {
