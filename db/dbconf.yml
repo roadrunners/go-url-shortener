@@ -1,0 +1,3 @@
+development:
+  driver: mymysql
+  open: url_shortener/root/
