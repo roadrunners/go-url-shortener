@@ -1,10 +1,13 @@
 package shortener
 
+import (
+	r "github.com/robfig/revel"
+)
+
 var store *urlStore
 
-func shortener() {
+func Init() {
 	store = newStore()
-	store.cacheKeys()
 }
 
 func Put(url string) (string, error) {
@@ -16,5 +19,5 @@ func Get(key string) (string, error) {
 }
 
 func init() {
-	go shortener()
+	r.OnAppStart(Init)
 }

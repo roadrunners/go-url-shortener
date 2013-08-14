@@ -9,7 +9,7 @@ import (
 
 type urlStore struct {
 	cacheGroup *gc.Group
-	keys       chan string
+	keys       chan<- string
 }
 
 const (
@@ -21,7 +21,7 @@ const (
 func newStore() *urlStore {
 	s := new(urlStore)
 	s.cacheGroup = gc.NewGroup(cacheName, cacheSize, gc.GetterFunc(s.getter))
-	s.keys = make(chan string, saveQueueLength)
+	s.keys = s.keysMonitor()
 	return s
 }
 
@@ -109,12 +109,16 @@ func (s *urlStore) set(key, url string) (err error) {
 	return
 }
 
-func (s *urlStore) cacheKeys() {
-	for {
-		key := <-s.keys
-		r.INFO.Println("Hottening cache for", key)
-		s.lookupKey(key)
-	}
+func (s *urlStore) keysMonitor() chan<- string {
+	updates := make(chan string)
+	go func() {
+		for {
+			key := <-updates
+			r.INFO.Println("Hottening cache for", key)
+			s.lookupKey(key)
+		}
+	}()
+	return updates
 }
 
 func (s *urlStore) keyAlreadyTaken(key string) (taken bool, err error) {
