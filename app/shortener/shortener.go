@@ -4,7 +4,6 @@ var store *urlStore
 
 func shortener() {
 	store = newStore()
-
 	store.cacheKeys()
 }
 
