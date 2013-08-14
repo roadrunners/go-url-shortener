@@ -5,6 +5,8 @@ import (
 	gc "github.com/golang/groupcache"
 	r "github.com/robfig/revel"
 	"go-url-shortener/app/models"
+	"os"
+	"os/signal"
 )
 
 type urlStore struct {
@@ -111,11 +113,18 @@ func (s *urlStore) set(key, url string) (err error) {
 
 func (s *urlStore) keysMonitor() chan<- string {
 	updates := make(chan string)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, os.Kill)
 	go func() {
 		for {
-			key := <-updates
-			r.INFO.Println("Hottening cache for", key)
-			s.lookupKey(key)
+			select {
+			case key := <-updates:
+				r.INFO.Println("Hottening cache for", key)
+				s.lookupKey(key)
+			case <-quit:
+				r.INFO.Println("Stopping keys monitor")
+				return
+			}
 		}
 	}()
 	return updates
