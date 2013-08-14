@@ -3,11 +3,8 @@ package shortener
 import (
 	"fmt"
 	gc "github.com/golang/groupcache"
-	"github.com/robfig/revel"
-)
-
-var (
-	db = make(map[string]string)
+	r "github.com/robfig/revel"
+	"go-url-shortener/app/models"
 )
 
 type urlStore struct {
@@ -36,28 +33,32 @@ func (e *CannotFindShortUrlError) Error() string {
 	return fmt.Sprintf("Cannot find short url %s", e.key)
 }
 
-func (s *urlStore) getter(ctx gc.Context, key string, dest gc.Sink) error {
-	revel.INFO.Printf("Asked for %s", key)
-	result, present := db[key]
-	if present {
-		revel.INFO.Printf("Found value %s for %s", result, key)
-		dest.SetBytes([]byte(result))
-		return nil
+func (s *urlStore) getter(ctx gc.Context, key string, dest gc.Sink) (err error) {
+	r.INFO.Printf("Asked for %s", key)
+	shortURL, err := models.ShortUrlBySlug(key)
+	if err != nil {
+		return
 	}
 
-	return &CannotFindShortUrlError{key}
+	if shortURL == nil {
+		return &CannotFindShortUrlError{key}
+	}
+
+	r.INFO.Printf("Found value %s", shortURL)
+	dest.SetBytes([]byte(shortURL.URL))
+	return nil
 }
 
 func (s *urlStore) Get(key string) (string, error) {
 	url, err := s.lookupKey(key)
 	if err != nil {
 		if _, ok := err.(*CannotFindShortUrlError); ok {
-			revel.ERROR.Print(err)
+			r.ERROR.Print(err)
 			return "", err
 		}
 	}
 
-	revel.INFO.Printf("Retrieved short url %s for %s", url, key)
+	r.INFO.Printf("Retrieved short url %s for %s", url, key)
 
 	return url, err
 }
@@ -66,8 +67,12 @@ func (s *urlStore) Put(url string) (string, error) {
 	var key string
 
 	for {
-		key = genKey(len(db))
-		err := s.set(key, url)
+		count, err := models.ShortURLCount()
+		if err != nil {
+			panic(err)
+		}
+		key = genKey(int(count))
+		err = s.set(key, url)
 		if err == nil {
 			break
 		}
@@ -78,7 +83,7 @@ func (s *urlStore) Put(url string) (string, error) {
 
 	s.keys <- key
 
-	revel.INFO.Printf("Created short url %s for %s", key, url)
+	r.INFO.Printf("Created short url %s for %s", key, url)
 
 	return key, nil
 }
@@ -91,23 +96,23 @@ func (e *KeyAlreadyPresentError) Error() string {
 	return fmt.Sprintf("Short url %s already present", e.key)
 }
 
-func (s *urlStore) set(key, url string) error {
+func (s *urlStore) set(key, url string) (err error) {
 	taken, err := s.keyAlreadyTaken(key)
 	if err != nil {
-		return err
+		return
 	}
 	if taken {
 		return &KeyAlreadyPresentError{key}
 	}
 
-	db[key] = url
-	return nil
+	_, err = models.ShortURLCreate(key, url)
+	return
 }
 
 func (s *urlStore) cacheKeys() {
 	for {
 		key := <-s.keys
-		revel.INFO.Println("Hottening cache for", key)
+		r.INFO.Println("Hottening cache for", key)
 		s.lookupKey(key)
 	}
 }
