@@ -2,7 +2,7 @@ package controllers
 
 import (
 	r "github.com/robfig/revel"
-	"go-url-shortener/app/shortener"
+	m "go-url-shortener/app/models"
 	"net/http"
 )
 
@@ -11,32 +11,21 @@ type URL struct {
 }
 
 func (c URL) Create(url string) r.Result {
-	slug, err := shortener.Put(url)
+	s, err := m.ShortURLCreate(url)
 	if err != nil {
 		return c.RenderError(err)
 	}
-
 	c.Response.Status = http.StatusCreated
-	return c.RenderJson(createResponse{slug})
-}
-
-type createResponse struct {
-	Slug string `json:"slug"`
+	return c.RenderJson(s)
 }
 
 func (c URL) Retrieve(slug string) r.Result {
-	url, err := shortener.Get(slug)
+	s, err := m.CachedShortUrlBySlug(slug)
 	if err != nil {
-		if _, ok := err.(*shortener.CannotFindShortUrlError); ok {
-			return c.NotFound("Short url not found for %s", slug)
-		}
-
 		return c.RenderError(err)
 	}
-
-	return c.RenderJson(retrieveResponse{url})
-}
-
-type retrieveResponse struct {
-	URL string `json:"url"`
+	if s != nil {
+		return c.RenderJson(s)
+	}
+	return c.NotFound("Short url not found for %s", slug)
 }

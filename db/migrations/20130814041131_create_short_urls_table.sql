@@ -1,10 +1,9 @@
 
 -- +goose Up
 create table short_urls (
-  id int not null auto_increment,
-  slug text,
-  url text,
-  primary key (id)
+  slug varchar(20) not null,
+  url text not null,
+  primary key (slug)
 );
 
 -- +goose Down

@@ -13,7 +13,7 @@ func Init() {
 	db.Init()
 	Dbm = &gorp.DbMap{Db: db.Db, Dialect: gorp.MySQLDialect{}}
 
-	t := Dbm.AddTableWithName(models.ShortURL{}, "short_urls").SetKeys(true, "Id")
+	t := Dbm.AddTableWithName(models.ShortURL{}, "short_urls").SetKeys(false, "Slug")
 	setColumnSizes(t, map[string]int{
 		"Slug": 20,
 		"URL":  512,

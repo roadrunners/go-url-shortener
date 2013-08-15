@@ -2,20 +2,20 @@ package shortener
 
 import (
 	r "github.com/robfig/revel"
+	m "go-url-shortener/app/models"
+	"go-url-shortener/app/store"
 )
 
-var store *urlStore
-
 func Init() {
-	store = newStore()
-}
+	shortURLGetter := func(slug string) (*string, error) {
+		s, err := m.ShortUrlBySlug(slug)
+		if err != nil || s == nil {
+			return nil, err
+		}
+		return &s.URL, nil
+	}
 
-func Put(url string) (string, error) {
-	return store.Put(url)
-}
-
-func Get(key string) (string, error) {
-	return store.Get(key)
+	store.NewStore(m.StoreName, store.GetterFunc(shortURLGetter))
 }
 
 func init() {
