@@ -1,16 +1,16 @@
 package controllers
 
 import (
-	"github.com/robfig/revel"
+	r "github.com/robfig/revel"
 	"go-url-shortener/app/shortener"
 	"net/http"
 )
 
 type URL struct {
-	*revel.Controller
+	*r.Controller
 }
 
-func (c URL) Create(url string) revel.Result {
+func (c URL) Create(url string) r.Result {
 	slug, err := shortener.Put(url)
 	if err != nil {
 		return c.RenderError(err)
@@ -24,7 +24,7 @@ type createResponse struct {
 	Slug string `json:"slug"`
 }
 
-func (c URL) Retrieve(slug string) revel.Result {
+func (c URL) Retrieve(slug string) r.Result {
 	url, err := shortener.Get(slug)
 	if err != nil {
 		if _, ok := err.(*shortener.CannotFindShortUrlError); ok {
