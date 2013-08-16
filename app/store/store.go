@@ -1,11 +1,14 @@
 package store
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	gc "github.com/golang/groupcache"
 	r "github.com/robfig/revel"
 	"os"
 	"os/signal"
+	"reflect"
 	"sync"
 )
 
@@ -15,12 +18,12 @@ const (
 )
 
 type Getter interface {
-	Get(key string) (*string, error)
+	Get(key string) (interface{}, error)
 }
 
-type GetterFunc func(key string) (*string, error)
+type GetterFunc func(key string) (interface{}, error)
 
-func (f GetterFunc) Get(key string) (*string, error) {
+func (f GetterFunc) Get(key string) (interface{}, error) {
 	return f(key)
 }
 
@@ -35,7 +38,18 @@ func GetStore(name string) *Store {
 	return stores[name]
 }
 
-func NewStore(name string, getter Getter) *Store {
+func toType(i interface{}) reflect.Type {
+	t := reflect.TypeOf(i)
+
+	// If a Pointer to a type, follow
+	for t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	return t
+}
+
+func NewStore(name string, i interface{}, getter Getter) *Store {
 	if getter == nil {
 		panic("nil getter")
 	}
@@ -46,6 +60,7 @@ func NewStore(name string, getter Getter) *Store {
 	s.cacheGroup = gc.NewGroup(s.name, cacheSize, gc.GetterFunc(s.populate))
 	s.keys = s.keysMonitor()
 	s.getter = getter
+	s.t = toType(i)
 	stores[name] = s
 	return s
 }
@@ -55,9 +70,10 @@ type Store struct {
 	cacheGroup *gc.Group
 	keys       chan<- string
 	getter     Getter
+	t          reflect.Type
 }
 
-func (s *Store) Get(key string) (*string, error) {
+func (s *Store) Get(key string) (interface{}, error) {
 	value, err := s.lookupKey(key)
 	if err != nil {
 		return nil, err
@@ -79,8 +95,14 @@ func (s *Store) populate(ctx gc.Context, key string, dest gc.Sink) error {
 		r.ERROR.Printf("Could not find key %s", key)
 		return &CannotFindKeyError{key}
 	}
-	r.INFO.Printf("Found value %s for %s", *item, key)
-	dest.SetBytes([]byte(*item))
+	r.INFO.Printf("Found key %s", key)
+	var buffer bytes.Buffer
+	enc := gob.NewEncoder(&buffer)
+	err = enc.Encode(item)
+	if err != nil {
+		return err
+	}
+	dest.SetBytes(buffer.Bytes())
 	return nil
 }
 
@@ -129,7 +151,7 @@ func (s *Store) keyAlreadyTaken(key string) (bool, error) {
 	return true, nil
 }
 
-func (s *Store) lookupKey(key string) (*string, error) {
+func (s *Store) lookupKey(key string) (interface{}, error) {
 	var data []byte
 	err := s.cacheGroup.Get(nil, key, gc.AllocatingByteSliceSink(&data))
 	if err != nil {
@@ -138,6 +160,11 @@ func (s *Store) lookupKey(key string) (*string, error) {
 		}
 		return nil, err
 	}
-	value := string(data)
-	return &value, nil
+	buffer := bytes.NewBuffer(data)
+	dec := gob.NewDecoder(buffer)
+	v := reflect.New(s.t).Interface()
+	if err = dec.Decode(v); err != nil {
+		return nil, err
+	}
+	return v, nil
 }

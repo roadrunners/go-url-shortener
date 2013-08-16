@@ -46,7 +46,7 @@ func CachedShortUrlBySlug(slug string) (*ShortURL, error) {
 	if err != nil || url == nil {
 		return nil, err
 	}
-	s := &ShortURL{Slug: slug, URL: *url}
+	s := &ShortURL{Slug: slug, URL: *url.(*string)}
 	s.Id = genId(s.Slug)
 	return s, nil
 }
