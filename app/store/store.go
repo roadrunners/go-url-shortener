@@ -101,7 +101,7 @@ func (s *Store) Pull(key string) {
 func (s *Store) keysMonitor() chan<- string {
 	updates := make(chan string, saveQueueLength)
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, os.Kill)
+	signal.Notify(quit)
 	go func() {
 		for {
 			select {
@@ -110,6 +110,7 @@ func (s *Store) keysMonitor() chan<- string {
 				s.lookupKey(key)
 			case <-quit:
 				r.INFO.Printf("Stopping keys monitor for %s", s.name)
+				close(updates)
 				return
 			}
 		}
