@@ -7,7 +7,7 @@ import (
 )
 
 func Init() {
-	shortURLGetter := func(slug string) (*string, error) {
+	urlGetter := func(slug string) (*string, error) {
 		s, err := m.ShortUrlBySlug(slug)
 		if err != nil || s == nil {
 			return nil, err
@@ -15,7 +15,7 @@ func Init() {
 		return &s.URL, nil
 	}
 
-	store.NewStore(m.StoreName, store.GetterFunc(shortURLGetter))
+	store.NewStore(m.StoreName, store.GetterFunc(urlGetter))
 }
 
 func init() {

@@ -11,7 +11,8 @@ const (
 )
 
 type ShortURL struct {
-	Slug string `db:"slug" json:"slug"`
+	Id   int    `db:"id" json:"-"`
+	Slug string `db:"-" json:"slug"`
 	URL  string `db:"url" json:"url"`
 }
 
@@ -24,12 +25,19 @@ func (s *ShortURL) pull() {
 	store.Pull(s.Slug)
 }
 
-func ShortUrlBySlug(slug string) (*ShortURL, error) {
-	s, err := db.Dbm.Get(ShortURL{}, slug)
-	if err != nil || s == nil {
+func ShortUrlById(id int) (*ShortURL, error) {
+	v, err := db.Dbm.Get(ShortURL{}, id)
+	if err != nil || v == nil {
 		return nil, err
 	}
-	return s.(*ShortURL), nil
+	s := v.(*ShortURL)
+	s.Slug = genKey(s.Id)
+	return s, nil
+}
+
+func ShortUrlBySlug(slug string) (*ShortURL, error) {
+	id := genId(slug)
+	return ShortUrlById(id)
 }
 
 func CachedShortUrlBySlug(slug string) (*ShortURL, error) {
@@ -38,40 +46,20 @@ func CachedShortUrlBySlug(slug string) (*ShortURL, error) {
 	if err != nil || url == nil {
 		return nil, err
 	}
-	s := &ShortURL{slug, *url}
+	s := &ShortURL{Slug: slug, URL: *url}
+	s.Id = genId(s.Slug)
 	return s, nil
 }
 
 func ShortURLCreate(url string) (*ShortURL, error) {
-	count, err := shortURLCount()
-	if err != nil {
+	s := &ShortURL{URL: url}
+	if err := db.Dbm.Insert(s); err != nil {
 		return nil, err
-	}
-	urlStore := GetStore()
-	var slug string
-	for {
-		slug = genKey(int(count))
-		s, err := urlStore.Get(slug)
-		if err != nil {
-			return nil, err
-		}
-		if s == nil {
-			break
-		}
-		count++
 	}
 
-	s := &ShortURL{slug, url}
-	if err = db.Dbm.Insert(s); err != nil {
-		return nil, err
-	}
+	s.Slug = genKey(s.Id)
 	s.pull()
 	return s, nil
-}
-
-func shortURLCount() (count int64, err error) {
-	count, err = db.Dbm.SelectInt("select count(*) from short_urls")
-	return
 }
 
 var (
@@ -85,14 +73,25 @@ func GetStore() *store.Store {
 	return urlStore
 }
 
-var keyChar = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var (
+	keyChar   = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	decodeMap = makeDecodeMap()
+)
+
+func makeDecodeMap() map[byte]int {
+	m := make(map[byte]int)
+	for i, b := range keyChar {
+		m[b] = i
+	}
+	return m
+}
 
 func genKey(n int) string {
 	if n == 0 {
 		return string(keyChar[0])
 	}
 	l := len(keyChar)
-	s := make([]byte, 20) // FIXME: will overflow. eventually.
+	s := make([]byte, 20)
 	i := len(s)
 	for n > 0 && i >= 0 {
 		i--
@@ -101,4 +100,14 @@ func genKey(n int) string {
 		s[i] = keyChar[j]
 	}
 	return string(s[i:])
+}
+
+func genId(key string) int {
+	l := len(keyChar)
+	n := 0
+	for _, b := range key {
+		n *= l
+		n += decodeMap[byte(b)]
+	}
+	return n
 }

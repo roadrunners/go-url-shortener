@@ -1,9 +1,9 @@
 
 -- +goose Up
 create table short_urls (
-  slug varchar(20) not null collate latin1_bin,
+  id int not null auto_increment,
   url text not null,
-  primary key (slug)
+  primary key (id)
 );
 
 -- +goose Down

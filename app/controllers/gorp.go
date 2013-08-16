@@ -13,10 +13,9 @@ func Init() {
 	db.Init()
 	Dbm = &gorp.DbMap{Db: db.Db, Dialect: gorp.MySQLDialect{}}
 
-	t := Dbm.AddTableWithName(models.ShortURL{}, "short_urls").SetKeys(false, "Slug")
+	t := Dbm.AddTableWithName(models.ShortURL{}, "short_urls").SetKeys(true, "Id")
 	setColumnSizes(t, map[string]int{
-		"Slug": 20,
-		"URL":  512,
+		"URL": 512,
 	})
 
 	Dbm.TraceOn("[gorp]", r.INFO)
