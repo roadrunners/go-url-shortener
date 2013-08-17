@@ -41,8 +41,8 @@ func ShortUrlBySlug(slug string) (*ShortURL, error) {
 }
 
 func CachedShortUrlBySlug(slug string) (*ShortURL, error) {
-	urlStore := GetStore()
-	url, err := urlStore.Get(slug)
+	store := GetStore()
+	url, err := store.Get(slug)
 	if err != nil || url == nil {
 		return nil, err
 	}
