@@ -1,3 +1,7 @@
 development:
   driver: mymysql
-  open: url_shortener/root/
+  open: go_url_shortener_development/root/
+
+prod:
+  driver: mymysql
+  open: go_url_shortener/root/
