@@ -7,11 +7,11 @@ import (
 )
 
 type URL struct {
-	*r.Controller
+	Application
 }
 
 func (c URL) Create(url string) r.Result {
-	s, err := m.ShortURLCreate(url)
+	s, err := m.ShortUrlCreate(c.XormSession, url)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -20,7 +20,7 @@ func (c URL) Create(url string) r.Result {
 }
 
 func (c URL) Retrieve(slug string) r.Result {
-	s, err := m.CachedShortUrlBySlug(slug)
+	s, err := m.CachedShortUrlBySlug(c.XormSession, slug)
 	if err != nil {
 		return c.RenderError(err)
 	}
