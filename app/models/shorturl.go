@@ -67,7 +67,7 @@ var (
 )
 
 func getStore() *store.Store {
-	return store.getStore(StoreName)
+	return store.GetStore(StoreName)
 }
 
 var (
