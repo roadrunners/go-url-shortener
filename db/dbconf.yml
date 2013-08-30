@@ -1,7 +1,7 @@
 development:
   driver: mymysql
-  open: go_url_shortener_development/root/
+  open: go_url_shortener/root/
 
 prod:
   driver: mymysql
-  open: go_url_shortener/root/
+  open: tcp:$DB_HOST*$DB_NAME/$DB_USERNAME/$DB_PASSWORD
