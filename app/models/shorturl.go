@@ -3,11 +3,8 @@ package models
 import (
 	"fmt"
 	"github.com/lunny/xorm"
-	"go-url-shortener/app/store"
-)
-
-const (
-	StoreName = "ShortUrlStore"
+	r "github.com/robfig/revel"
+	"go-url-shortener/app/redis"
 )
 
 type ShortUrl struct {
@@ -21,8 +18,11 @@ func (s ShortUrl) String() string {
 }
 
 func (s *ShortUrl) pull() {
-	store := getStore()
-	store.Pull(s.Slug)
+	key := fmt.Sprintf("shorturl:%d:url", s.Id)
+	err := redis.Client.Set(key, []byte(s.URL))
+	if err != nil {
+		r.ERROR.Fatal("Could not push short url to redis")
+	}
 }
 
 func ShortUrlById(session *xorm.Session, id int64) (*ShortUrl, error) {
@@ -41,14 +41,18 @@ func ShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error) {
 }
 
 func CachedShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error) {
-	store := getStore()
-	url, err := store.Get(slug)
-	if err != nil || url == nil {
-		return nil, err
+	id := genId(slug)
+	key := fmt.Sprintf("shorturl:%d:url", id)
+	data, err := redis.Client.Get(key)
+	if err == nil {
+		s := ShortUrl{Id: id, Slug: slug, URL: string(data)}
+		return &s, nil
 	}
-	s := ShortUrl{Slug: slug, URL: *url.(*string)}
-	s.Id = genId(s.Slug)
-	return &s, nil
+	s, err := ShortUrlById(session, id)
+	if s != nil {
+		go s.pull()
+	}
+	return s, err
 }
 
 func ShortUrlCreate(session *xorm.Session, url string) (*ShortUrl, error) {
@@ -58,16 +62,8 @@ func ShortUrlCreate(session *xorm.Session, url string) (*ShortUrl, error) {
 		return nil, err
 	}
 	s.Slug = genKey(s.Id)
-	s.pull()
+	go s.pull()
 	return &s, nil
-}
-
-var (
-	urlStore *store.Store
-)
-
-func getStore() *store.Store {
-	return store.GetStore(StoreName)
 }
 
 var (
