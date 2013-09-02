@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/lunny/xorm"
 	r "github.com/robfig/revel"
+	k "go-url-shortener/app/models/key"
 	"go-url-shortener/app/redis"
 )
 
@@ -31,17 +32,17 @@ func ShortUrlById(session *xorm.Session, id int64) (*ShortUrl, error) {
 	if err != nil || !has {
 		return nil, err
 	}
-	s.Slug = genKey(s.Id)
+	s.Slug = k.GenKey(s.Id)
 	return &s, nil
 }
 
 func ShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error) {
-	id := genId(slug)
+	id := k.GenId(slug)
 	return ShortUrlById(session, id)
 }
 
 func CachedShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error) {
-	id := genId(slug)
+	id := k.GenId(slug)
 	key := fmt.Sprintf("shorturl:%d:url", id)
 	data, err := redis.Client.Get(key)
 	if err == nil {
@@ -61,46 +62,7 @@ func ShortUrlCreate(session *xorm.Session, url string) (*ShortUrl, error) {
 	if err != nil {
 		return nil, err
 	}
-	s.Slug = genKey(s.Id)
+	s.Slug = k.GenKey(s.Id)
 	go s.pull()
 	return &s, nil
-}
-
-var (
-	keyChar   = []byte("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	decodeMap = makeDecodeMap()
-)
-
-func makeDecodeMap() map[byte]int64 {
-	m := make(map[byte]int64)
-	for i, b := range keyChar {
-		m[b] = int64(i)
-	}
-	return m
-}
-
-func genKey(n int64) string {
-	if n == 0 {
-		return string(keyChar[0])
-	}
-	l := int64(len(keyChar))
-	s := make([]byte, 20)
-	i := int64(len(s))
-	for n > 0 && i >= 0 {
-		i--
-		j := n % l
-		n = (n - j) / l
-		s[i] = keyChar[j]
-	}
-	return string(s[i:])
-}
-
-func genId(key string) int64 {
-	l := int64(len(keyChar))
-	n := int64(0)
-	for _, b := range key {
-		n *= l
-		n += decodeMap[byte(b)]
-	}
-	return n
 }
