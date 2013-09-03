@@ -19,6 +19,7 @@ func Init() {
 	if db, found = r.Config.Int("redis.db"); !found {
 		r.ERROR.Fatal("No redis.db found")
 	}
+	r.INFO.Printf("Connecting to redis db %v at %v", db, addr)
 	Client = &redis.Client{Addr: addr, Db: db}
 }
 
