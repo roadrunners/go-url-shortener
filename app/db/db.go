@@ -1,6 +1,7 @@
 package db
 
 import (
+	"fmt"
 	"github.com/lunny/xorm"
 	r "github.com/robfig/revel"
 )
@@ -8,6 +9,22 @@ import (
 var (
 	Engine *xorm.Engine
 )
+
+func ensureOption(option string) string {
+	value, found := r.Config.String(option)
+	if !found {
+		r.ERROR.Fatalf("Option %v not found", option)
+	}
+	return value
+}
+
+func calcSpec() string {
+	host := ensureOption("db.host")
+	name := ensureOption("db.name")
+	username := ensureOption("db.username")
+	password := r.Config.StringDefault("db.password", "")
+	return fmt.Sprintf("%v:%v@tcp(%v)/%v", username, password, host, name)
+}
 
 func Init() {
 	var found bool
@@ -17,7 +34,7 @@ func Init() {
 	}
 	var spec string
 	if spec, found = r.Config.String("db.spec"); !found {
-		r.ERROR.Fatal("No db.spec found.")
+		spec = calcSpec()
 	}
 	engine, err := xorm.NewEngine(driver, spec)
 	if err != nil {
