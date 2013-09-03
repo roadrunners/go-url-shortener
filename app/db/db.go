@@ -36,6 +36,7 @@ func Init() {
 	if spec, found = r.Config.String("db.spec"); !found {
 		spec = calcSpec()
 	}
+	r.INFO.Printf("Connecting to mysql at %v", spec)
 	engine, err := xorm.NewEngine(driver, spec)
 	if err != nil {
 		panic(err)
