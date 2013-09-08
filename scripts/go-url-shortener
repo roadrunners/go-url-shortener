@@ -16,12 +16,6 @@ CMD="$WORKDIR/$NAME -importPath $NAME -srcPath $WORKDIR/src -runMode prod"
 PIDFILE="/var/run/$NAME.pid"
 LOGFILE="/var/log/$NAME.log"
 
-DB_HOST=mysql.roadrunners.in:3306
-DB_USERNAME=roadrunner
-DB_PASSWORD='ryv6ZUeQXPdwje66UDZv'
-DB_NAME=go_url_shortener
-REDIS_HOST=redis.roadrunners.in
-
 recursiveKill() { # Recursively kill a process and all subprocesses
     CPIDS=$(pgrep -P $1);
     for PID in $CPIDS
@@ -39,11 +33,6 @@ case "$1" in
 			echo "Already running according to $PIDFILE"
 			exit 1
 		fi
-		export DB_HOST
-		export DB_USERNAME
-		export DB_PASSWORD
-		export DB_NAME
-		export REDIS_HOST
 		/bin/su -m -l $USER -c "$CMD" > $LOGFILE 2>&1 &
 		PID=$!
 		echo $PID > $PIDFILE
@@ -66,18 +55,18 @@ case "$1" in
 		$0 start
 		;;
 	status)
-        if [ -f "$WORKDIR/$NAME.pid" ]; then
-            PID=`cat $PIDFILE`
-            if [ "$(/bin/ps --no-headers -p $PID)" ]; then
-                echo "$NAME is running (pid : $PID)" && exit 0
-            else
-                echo "Pid $PID found in $PIDFILE, but not running." && exit 1
-            fi
-        else
-            echo "$NAME is NOT running" && exit 1
-        fi
-	    ;;
+    if [ -f "$PIDFILE" ]; then
+      PID=`cat $PIDFILE`
+      if [ "$(/bin/ps --no-headers -p $PID)" ]; then
+        echo "$NAME is running (pid : $PID)" && exit 0
+      else
+        echo "Pid $PID found in $PIDFILE, but not running." && exit 1
+      fi
+    else
+      echo "$NAME is NOT running" && exit 1
+    fi
+    ;;
 	*)
 		echo "Usage: /etc/init.d/$NAME {start|stop|restart|status}" && exit 1
-	    ;;
+    ;;
 esac
