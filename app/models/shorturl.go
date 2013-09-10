@@ -3,9 +3,9 @@ package models
 import (
 	"fmt"
 	"github.com/lunny/xorm"
+	k "github.com/roadrunners/go-url-shortener/app/models/key"
+	"github.com/roadrunners/go-url-shortener/app/redis"
 	r "github.com/robfig/revel"
-	k "go-url-shortener/app/models/key"
-	"go-url-shortener/app/redis"
 )
 
 type ShortUrl struct {
