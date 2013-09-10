@@ -3,8 +3,8 @@ package controllers
 import (
 	"database/sql"
 	"github.com/lunny/xorm"
+	db "github.com/roadrunners/go-url-shortener/app/db"
 	r "github.com/robfig/revel"
-	db "go-url-shortener/app/db"
 )
 
 type XormController struct {

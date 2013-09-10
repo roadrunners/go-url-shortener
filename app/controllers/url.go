@@ -1,8 +1,8 @@
 package controllers
 
 import (
+	m "github.com/roadrunners/go-url-shortener/app/models"
 	r "github.com/robfig/revel"
-	m "go-url-shortener/app/models"
 	"net/http"
 )
 
