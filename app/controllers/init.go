@@ -5,7 +5,7 @@ import (
 )
 
 func init() {
-	r.InterceptMethod((*XormController).Begin, r.BEFORE)
-	r.InterceptMethod((*XormController).Commit, r.AFTER)
-	r.InterceptMethod((*XormController).Rollback, r.FINALLY)
+	r.InterceptMethod((*XormController).Before, r.BEFORE)
+	r.InterceptMethod((*XormController).After, r.AFTER)
+	r.InterceptMethod((*XormController).After, r.FINALLY)
 }
