@@ -28,6 +28,7 @@ func (s ShortUrl) String() string {
 
 func (s *ShortUrl) pull() {
 	key := fmt.Sprintf("shorturl:%d:url", s.Id)
+	r.INFO.Printf("Populating cache %v: %v", key, s.URL)
 	err := redis.Client.Set(key, []byte(s.URL))
 	if err != nil {
 		r.ERROR.Fatal("Could not push short url to redis")
@@ -57,9 +58,9 @@ func CachedShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error)
 		s := ShortUrl{Id: id, Slug: slug, URL: string(data)}
 		return &s, nil
 	}
-	r.WARN.Printf("Missed cache for slug %v (id %v)", slug, id)
+	r.WARN.Printf("Missed cache for slug %v (id %v, key %v)", slug, id, key)
 	s, err := ShortUrlById(session, id)
-	if s != nil {
+	if s != nil && err != nil {
 		pulls <- s
 	}
 	return s, err
@@ -86,7 +87,7 @@ func pullMonitor() chan *ShortUrl {
 			case s := <-pulls:
 				s.pull()
 			case <-quit:
-				r.WARN.Printf("Stopping pull monitor goroutine")
+				r.WARN.Print("Stopping pull monitor")
 				close(pulls)
 				return
 			}
