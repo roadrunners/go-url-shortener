@@ -6,6 +6,14 @@ import (
 	k "github.com/roadrunners/go-url-shortener/app/models/key"
 	"github.com/roadrunners/go-url-shortener/app/redis"
 	r "github.com/robfig/revel"
+	"os"
+	"os/signal"
+)
+
+const totalBufferedPulls = 1000
+
+var (
+	pulls chan *ShortUrl
 )
 
 type ShortUrl struct {
@@ -49,9 +57,10 @@ func CachedShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error)
 		s := ShortUrl{Id: id, Slug: slug, URL: string(data)}
 		return &s, nil
 	}
+	r.WARN.Printf("Missed cache for slug %v (id %v)", slug, id)
 	s, err := ShortUrlById(session, id)
 	if s != nil {
-		go s.pull()
+		pulls <- s
 	}
 	return s, err
 }
@@ -63,6 +72,33 @@ func ShortUrlCreate(session *xorm.Session, url string) (*ShortUrl, error) {
 		return nil, err
 	}
 	s.Slug = k.GenKey(s.Id)
-	go s.pull()
+	pulls <- &s
 	return &s, nil
+}
+
+func pullMonitor() chan *ShortUrl {
+	pulls := make(chan *ShortUrl, totalBufferedPulls)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, os.Kill)
+	go func() {
+		for {
+			select {
+			case s := <-pulls:
+				s.pull()
+			case <-quit:
+				r.WARN.Printf("Stopping pull monitor goroutine")
+				close(pulls)
+				return
+			}
+		}
+	}()
+	return pulls
+}
+
+func Init() {
+	pulls = pullMonitor()
+}
+
+func init() {
+	r.OnAppStart(Init)
 }
