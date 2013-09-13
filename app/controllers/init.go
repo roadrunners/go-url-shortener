@@ -6,7 +6,10 @@ import (
 )
 
 func init() {
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	numCPU := runtime.NumCPU()
+	gomaxprocs := runtime.GOMAXPROCS(numCPU)
+
+	r.WARN.Printf("Total CPU detected %v, setting GOMAXPROCS to %v", numCPU, gomaxprocs)
 
 	r.InterceptMethod((*XormController).Begin, r.BEFORE)
 	r.InterceptMethod((*XormController).Commit, r.AFTER)
