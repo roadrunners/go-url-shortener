@@ -10,10 +10,10 @@ import (
 	"os/signal"
 )
 
-const totalBufferedPulls = 1000
+const redisBuffer = 10000
 
 var (
-	pulls chan *ShortUrl
+	sendToRedis chan *ShortUrl
 )
 
 type ShortUrl struct {
@@ -61,7 +61,7 @@ func CachedShortUrlBySlug(slug string) (*ShortUrl, error) {
 	revel.WARN.Printf("Missed cache for slug %v (id %v, key %v)", slug, id, k)
 	s, err := ShortUrlById(id)
 	if s != nil && err == nil {
-		pulls <- s
+		sendToRedis <- s
 	}
 	return s, err
 }
@@ -72,31 +72,31 @@ func ShortUrlCreate(url string) (*ShortUrl, error) {
 		return nil, err
 	}
 	s.Slug = key.GenKey(s.Id)
-	pulls <- s
+	sendToRedis <- s
 	return s, nil
 }
 
-func pullMonitor() chan *ShortUrl {
-	pulls := make(chan *ShortUrl, totalBufferedPulls)
+func redisMonitor() chan *ShortUrl {
+	sendToRedis := make(chan *ShortUrl, redisBuffer)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, os.Kill)
 	go func() {
 		for {
 			select {
-			case s := <-pulls:
+			case s := <-sendToRedis:
 				s.pull()
 			case <-quit:
-				revel.WARN.Print("Stopping pull monitor")
-				close(pulls)
+				revel.WARN.Print("Stopping redis monitor")
+				close(sendToRedis)
 				return
 			}
 		}
 	}()
-	return pulls
+	return sendToRedis
 }
 
 func shortUrlInit() {
-	pulls = pullMonitor()
+	sendToRedis = redisMonitor()
 }
 
 func init() {
