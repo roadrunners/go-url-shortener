@@ -19,8 +19,9 @@ func Init() {
 	if db, found = revel.Config.Int("redis.db"); !found {
 		revel.ERROR.Fatal("No redis.db found")
 	}
-	revel.INFO.Printf("Connecting to redis db %v at %v", db, addr)
-	Client = &redis.Client{Addr: addr, Db: db}
+	poolSize := revel.Config.IntDefault("redis.poolsize", 0)
+	revel.INFO.Printf("Connecting to redis db %v at %v with poolsize %v (0 = use driver default)", db, addr, poolSize)
+	Client = &redis.Client{Addr: addr, Db: db, MaxPoolSize: poolSize}
 }
 
 func init() {
