@@ -10,12 +10,6 @@ import (
 	"os/signal"
 )
 
-const redisBuffer = 10000
-
-var (
-	sendToRedis chan *ShortUrl
-)
-
 type ShortUrl struct {
 	Id   int64  `db:"id" json:"-"`
 	Slug string `db:"-" json:"slug"`
@@ -26,7 +20,7 @@ func (s ShortUrl) String() string {
 	return fmt.Sprintf("(%s, %s)", s.Slug, s.URL)
 }
 
-func (s *ShortUrl) pull() {
+func (s *ShortUrl) pushToRedis() {
 	k := fmt.Sprintf("shorturl:%d:url", s.Id)
 	revel.INFO.Printf("Populating cache %v: %v", k, s.URL)
 	err := redis.Client.Set(k, []byte(s.URL))
@@ -61,7 +55,7 @@ func CachedShortUrlBySlug(slug string) (*ShortUrl, error) {
 	revel.WARN.Printf("Missed cache for slug %v (id %v, key %v)", slug, id, k)
 	s, err := ShortUrlById(id)
 	if s != nil && err == nil {
-		sendToRedis <- s
+		go s.pushToRedis()
 	}
 	return s, err
 }
@@ -72,33 +66,6 @@ func ShortUrlCreate(url string) (*ShortUrl, error) {
 		return nil, err
 	}
 	s.Slug = key.GenKey(s.Id)
-	sendToRedis <- s
+	go s.pushToRedis()
 	return s, nil
-}
-
-func redisMonitor() chan *ShortUrl {
-	sendToRedis := make(chan *ShortUrl, redisBuffer)
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt, os.Kill)
-	go func() {
-		for {
-			select {
-			case s := <-sendToRedis:
-				s.pull()
-			case <-quit:
-				revel.WARN.Print("Stopping redis monitor")
-				close(sendToRedis)
-				return
-			}
-		}
-	}()
-	return sendToRedis
-}
-
-func shortUrlInit() {
-	sendToRedis = redisMonitor()
-}
-
-func init() {
-	revel.OnAppStart(shortUrlInit)
 }

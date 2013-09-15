@@ -6,7 +6,7 @@ import (
 	"github.com/robfig/revel"
 )
 
-func gorpInit() {
+func Init() {
 	t := db.DbMap.AddTableWithName(ShortUrl{}, "short_url").SetKeys(true, "Id")
 	setColumnSizes(t, map[string]int{
 		"URL": 512,
@@ -22,5 +22,5 @@ func setColumnSizes(t *gorp.TableMap, colSizes map[string]int) {
 }
 
 func init() {
-	revel.OnAppStart(gorpInit)
+	revel.OnAppStart(Init)
 }
