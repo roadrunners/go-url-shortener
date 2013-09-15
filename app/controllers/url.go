@@ -1,17 +1,17 @@
 package controllers
 
 import (
-	m "github.com/roadrunners/go-url-shortener/app/models"
-	r "github.com/robfig/revel"
+	"github.com/roadrunners/go-url-shortener/app/models"
+	"github.com/robfig/revel"
 	"net/http"
 )
 
 type URL struct {
-	Application
+	*revel.Controller
 }
 
-func (c URL) Create(url string) r.Result {
-	s, err := m.ShortUrlCreate(c.XormSession, url)
+func (c URL) Create(url string) revel.Result {
+	s, err := models.ShortUrlCreate(url)
 	if err != nil {
 		return c.RenderError(err)
 	}
@@ -19,8 +19,8 @@ func (c URL) Create(url string) r.Result {
 	return c.RenderJson(s)
 }
 
-func (c URL) Retrieve(slug string) r.Result {
-	s, err := m.CachedShortUrlBySlug(c.XormSession, slug)
+func (c URL) Retrieve(slug string) revel.Result {
+	s, err := models.CachedShortUrlBySlug(slug)
 	if err != nil {
 		return c.RenderError(err)
 	}

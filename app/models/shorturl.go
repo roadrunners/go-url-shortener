@@ -2,10 +2,10 @@ package models
 
 import (
 	"fmt"
-	"github.com/lunny/xorm"
-	k "github.com/roadrunners/go-url-shortener/app/models/key"
+	"github.com/roadrunners/go-url-shortener/app/db"
+	"github.com/roadrunners/go-url-shortener/app/models/key"
 	"github.com/roadrunners/go-url-shortener/app/redis"
-	r "github.com/robfig/revel"
+	"github.com/robfig/revel"
 	"os"
 	"os/signal"
 )
@@ -17,9 +17,9 @@ var (
 )
 
 type ShortUrl struct {
-	Id   int64  `xorm:"id pk not null autoincr" json:"-"`
-	Slug string `xorm:"-" json:"slug"`
-	URL  string `xorm:"url unique" json:"url"`
+	Id   int64  `db:"id" json:"-"`
+	Slug string `db:"-" json:"slug"`
+	URL  string `db:"url" json:"url"`
 }
 
 func (s ShortUrl) String() string {
@@ -27,54 +27,53 @@ func (s ShortUrl) String() string {
 }
 
 func (s *ShortUrl) pull() {
-	key := fmt.Sprintf("shorturl:%d:url", s.Id)
-	r.INFO.Printf("Populating cache %v: %v", key, s.URL)
-	err := redis.Client.Set(key, []byte(s.URL))
+	k := fmt.Sprintf("shorturl:%d:url", s.Id)
+	revel.INFO.Printf("Populating cache %v: %v", k, s.URL)
+	err := redis.Client.Set(k, []byte(s.URL))
 	if err != nil {
-		r.ERROR.Fatal("Could not push short url to redis")
+		revel.ERROR.Fatal("Could not push short url to redis")
 	}
 }
 
-func ShortUrlById(session *xorm.Session, id int64) (*ShortUrl, error) {
-	var s ShortUrl
-	has, err := session.Id(id).Get(&s)
-	if err != nil || !has {
+func ShortUrlById(id int64) (*ShortUrl, error) {
+	v, err := db.DbMap.Get(ShortUrl{}, id)
+	if err != nil || v == nil {
 		return nil, err
 	}
-	s.Slug = k.GenKey(s.Id)
-	return &s, nil
+	s := v.(*ShortUrl)
+	s.Slug = key.GenKey(s.Id)
+	return s, nil
 }
 
-func ShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error) {
-	id := k.GenId(slug)
-	return ShortUrlById(session, id)
+func ShortUrlBySlug(slug string) (*ShortUrl, error) {
+	id := key.GenId(slug)
+	return ShortUrlById(id)
 }
 
-func CachedShortUrlBySlug(session *xorm.Session, slug string) (*ShortUrl, error) {
-	id := k.GenId(slug)
-	key := fmt.Sprintf("shorturl:%d:url", id)
-	data, err := redis.Client.Get(key)
+func CachedShortUrlBySlug(slug string) (*ShortUrl, error) {
+	id := key.GenId(slug)
+	k := fmt.Sprintf("shorturl:%d:url", id)
+	data, err := redis.Client.Get(k)
 	if err == nil {
 		s := ShortUrl{Id: id, Slug: slug, URL: string(data)}
 		return &s, nil
 	}
-	r.WARN.Printf("Missed cache for slug %v (id %v, key %v)", slug, id, key)
-	s, err := ShortUrlById(session, id)
-	if s != nil && err != nil {
+	revel.WARN.Printf("Missed cache for slug %v (id %v, key %v)", slug, id, k)
+	s, err := ShortUrlById(id)
+	if s != nil && err == nil {
 		pulls <- s
 	}
 	return s, err
 }
 
-func ShortUrlCreate(session *xorm.Session, url string) (*ShortUrl, error) {
-	s := ShortUrl{URL: url}
-	_, err := session.Insert(&s)
-	if err != nil {
+func ShortUrlCreate(url string) (*ShortUrl, error) {
+	s := &ShortUrl{URL: url}
+	if err := db.DbMap.Insert(s); err != nil {
 		return nil, err
 	}
-	s.Slug = k.GenKey(s.Id)
-	pulls <- &s
-	return &s, nil
+	s.Slug = key.GenKey(s.Id)
+	pulls <- s
+	return s, nil
 }
 
 func pullMonitor() chan *ShortUrl {
@@ -87,7 +86,7 @@ func pullMonitor() chan *ShortUrl {
 			case s := <-pulls:
 				s.pull()
 			case <-quit:
-				r.WARN.Print("Stopping pull monitor")
+				revel.WARN.Print("Stopping pull monitor")
 				close(pulls)
 				return
 			}
@@ -96,10 +95,10 @@ func pullMonitor() chan *ShortUrl {
 	return pulls
 }
 
-func Init() {
+func shortUrlInit() {
 	pulls = pullMonitor()
 }
 
 func init() {
-	r.OnAppStart(Init)
+	revel.OnAppStart(shortUrlInit)
 }

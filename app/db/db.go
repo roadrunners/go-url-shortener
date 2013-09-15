@@ -1,19 +1,20 @@
 package db
 
 import (
+	"database/sql"
 	"fmt"
-	"github.com/lunny/xorm"
-	r "github.com/robfig/revel"
+	"github.com/coopernurse/gorp"
+	"github.com/robfig/revel"
 )
 
 var (
-	Engine *xorm.Engine
+	DbMap *gorp.DbMap
 )
 
 func ensureOption(option string) string {
-	value, found := r.Config.String(option)
+	value, found := revel.Config.String(option)
 	if !found {
-		r.ERROR.Fatalf("Option %v not found", option)
+		revel.ERROR.Fatalf("Option %v not found", option)
 	}
 	return value
 }
@@ -22,28 +23,28 @@ func calcSpec() string {
 	host := ensureOption("db.host")
 	name := ensureOption("db.name")
 	username := ensureOption("db.username")
-	password := r.Config.StringDefault("db.password", "")
+	password := revel.Config.StringDefault("db.password", "")
 	return fmt.Sprintf("%v:%v@tcp(%v)/%v", username, password, host, name)
 }
 
 func Init() {
 	var found bool
 	var driver string
-	if driver, found = r.Config.String("db.driver"); !found {
-		r.ERROR.Fatal("No db.driver found.")
+	if driver, found = revel.Config.String("db.driver"); !found {
+		revel.ERROR.Fatal("No db.driver found.")
 	}
 	var spec string
-	if spec, found = r.Config.String("db.spec"); !found {
+	if spec, found = revel.Config.String("db.spec"); !found {
 		spec = calcSpec()
 	}
-	r.INFO.Printf("Connecting to mysql at %v", spec)
-	engine, err := xorm.NewEngine(driver, spec)
+	revel.INFO.Printf("Connecting to mysql at %v", spec)
+	db, err := sql.Open(driver, spec)
 	if err != nil {
 		panic(err)
 	}
-	Engine = engine
+	DbMap = &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
 }
 
 func init() {
-	r.OnAppStart(Init)
+	revel.OnAppStart(Init)
 }
