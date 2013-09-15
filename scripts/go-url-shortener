@@ -15,7 +15,6 @@ WORKDIR="/opt/$NAME"
 CMD="$WORKDIR/$NAME -importPath $NAME -srcPath $WORKDIR/src -runMode prod"
 PIDFILE="/var/run/$NAME.pid"
 LOGFILE="/var/log/$NAME.log"
-GOMAXPROCS=`cat /proc/cpuinfo | grep processor | wc -l`
 
 recursiveKill() { # Recursively kill a process and all subprocesses
     CPIDS=$(pgrep -P $1);
@@ -34,7 +33,6 @@ case "$1" in
 			echo "Already running according to $PIDFILE"
 			exit 1
 		fi
-		export GOMAXPROCS
 		/bin/su -m -l $USER -c "$CMD" > $LOGFILE 2>&1 &
 		PID=$!
 		echo $PID > $PIDFILE
