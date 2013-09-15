@@ -42,6 +42,10 @@ func Init() {
 	if err != nil {
 		panic(err)
 	}
+	if maxIdle, found := revel.Config.Int("db.maxidle"); found {
+		db.SetMaxIdleConns(maxIdle)
+		revel.WARN.Printf("Set max idle conns to %v", maxIdle)
+	}
 	DbMap = &gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
 }
 
