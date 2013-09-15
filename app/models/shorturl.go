@@ -6,8 +6,6 @@ import (
 	"github.com/roadrunners/go-url-shortener/app/models/key"
 	"github.com/roadrunners/go-url-shortener/app/redis"
 	"github.com/robfig/revel"
-	"os"
-	"os/signal"
 )
 
 type ShortUrl struct {
