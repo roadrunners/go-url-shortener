@@ -7,9 +7,9 @@ import (
 
 func Init() {
 	numCPU := runtime.NumCPU()
-	gomaxprocs := runtime.GOMAXPROCS(numCPU)
+	gomaxprocs := runtime.GOMAXPROCS(0)
 
-	revel.WARN.Printf("GOMAXPROCS was %v, Total CPU detected %v, set as new GOMAXPROCS", gomaxprocs, numCPU)
+	revel.WARN.Printf("Total CPU detected %v, GOMAXPROCS is set to %v", numCPU, gomaxprocs)
 }
 
 func init() {
