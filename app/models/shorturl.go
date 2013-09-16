@@ -20,7 +20,6 @@ func (s ShortUrl) String() string {
 
 func (s *ShortUrl) pushToRedis() {
 	k := fmt.Sprintf("shorturl:%d:url", s.Id)
-	revel.INFO.Printf("Populating cache %v: %v", k, s.URL)
 	err := redis.Client.Set(k, []byte(s.URL))
 	if err != nil {
 		revel.ERROR.Fatal("Could not push short url to redis")
