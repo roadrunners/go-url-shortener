@@ -19,7 +19,7 @@ func (s ShortUrl) String() string {
 }
 
 func (s *ShortUrl) pushToRedis() {
-	k := fmt.Sprintf("shorturl:%d:url", s.Id)
+	k := fmt.Sprintf("shorturl:%s:url", s.Slug)
 	err := redis.Client.Set(k, []byte(s.URL))
 	if err != nil {
 		revel.ERROR.Fatal("Could not push short url to redis")
@@ -42,13 +42,13 @@ func ShortUrlBySlug(slug string) (*ShortUrl, error) {
 }
 
 func CachedShortUrlBySlug(slug string) (*ShortUrl, error) {
-	id := key.GenId(slug)
-	k := fmt.Sprintf("shorturl:%d:url", id)
+	k := fmt.Sprintf("shorturl:%s:url", slug)
 	data, err := redis.Client.Get(k)
 	if err == nil {
-		s := ShortUrl{Id: id, Slug: slug, URL: string(data)}
+		s := ShortUrl{Slug: slug, URL: string(data)}
 		return &s, nil
 	}
+	id := key.GenId(slug)
 	revel.WARN.Printf("Missed cache for slug %v (id %v, key %v)", slug, id, k)
 	s, err := ShortUrlById(id)
 	if s != nil && err == nil {
